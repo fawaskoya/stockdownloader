@@ -129,8 +129,9 @@ def format_excel_worksheet(worksheet, title):
 def calculate_technical_indicators(data):
     """Calculate technical indicators for the stock data using the 'ta' library"""
     indicators = {}
-    close = data['Close']
-    volume = data['Volume']
+    # Ensure these are Series, not DataFrames
+    close = data['Close'] if isinstance(data['Close'], pd.Series) else data['Close'].squeeze()
+    volume = data['Volume'] if isinstance(data['Volume'], pd.Series) else data['Volume'].squeeze()
 
     # Moving Averages
     indicators['SMA_20'] = ta.trend.sma_indicator(close, window=20)
