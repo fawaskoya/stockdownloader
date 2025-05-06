@@ -8,7 +8,7 @@ import requests
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-import talib
+import ta
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import json
@@ -127,32 +127,38 @@ def format_excel_worksheet(worksheet, title):
     title_cell.alignment = Alignment(horizontal='center', vertical='center')
 
 def calculate_technical_indicators(data):
-    """Calculate technical indicators for the stock data"""
+    """Calculate technical indicators for the stock data using the 'ta' library"""
     indicators = {}
-    
+    close = data['Close']
+    volume = data['Volume']
+
     # Moving Averages
-    indicators['SMA_20'] = talib.SMA(data['Close'], timeperiod=20)
-    indicators['SMA_50'] = talib.SMA(data['Close'], timeperiod=50)
-    indicators['SMA_200'] = talib.SMA(data['Close'], timeperiod=200)
-    
+    indicators['SMA_20'] = ta.trend.sma_indicator(close, window=20)
+    indicators['SMA_50'] = ta.trend.sma_indicator(close, window=50)
+    indicators['SMA_200'] = ta.trend.sma_indicator(close, window=200)
+
     # RSI
-    indicators['RSI'] = talib.RSI(data['Close'], timeperiod=14)
-    
+    indicators['RSI'] = ta.momentum.rsi(close, window=14)
+
     # MACD
-    macd, macd_signal, macd_hist = talib.MACD(data['Close'])
+    macd = ta.trend.macd(close)
+    macd_signal = ta.trend.macd_signal(close)
+    macd_diff = ta.trend.macd_diff(close)
     indicators['MACD'] = macd
     indicators['MACD_Signal'] = macd_signal
-    indicators['MACD_Hist'] = macd_hist
-    
+    indicators['MACD_Hist'] = macd_diff
+
     # Bollinger Bands
-    upper, middle, lower = talib.BBANDS(data['Close'])
-    indicators['BB_Upper'] = upper
-    indicators['BB_Middle'] = middle
-    indicators['BB_Lower'] = lower
-    
-    # Volume indicators
-    indicators['OBV'] = talib.OBV(data['Close'], data['Volume'])
-    
+    bb_high = ta.volatility.bollinger_hband(close, window=20)
+    bb_mid = ta.volatility.bollinger_mavg(close, window=20)
+    bb_low = ta.volatility.bollinger_lband(close, window=20)
+    indicators['BB_Upper'] = bb_high
+    indicators['BB_Middle'] = bb_mid
+    indicators['BB_Lower'] = bb_low
+
+    # On-Balance Volume (OBV)
+    indicators['OBV'] = ta.volume.on_balance_volume(close, volume)
+
     return pd.DataFrame(indicators)
 
 def get_market_sentiment(ticker):

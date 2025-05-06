@@ -4,6 +4,7 @@ pandas
 openpyxl
 requests
 numpy
-TA-Lib
+# TA-Lib
 plotly
 gunicorn
+ta
