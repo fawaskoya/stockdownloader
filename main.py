@@ -289,8 +289,6 @@ def index():
         start_date = request.form['start']
         end_date = request.form['end']
         interval = request.form['interval']
-        required_return = float(request.form.get('required_return', 0.1))
-        growth_rate = float(request.form.get('growth_rate', 0.05))
         
         # Download data
         data = yf.download(ticker, start=start_date, end=end_date, interval=interval)
@@ -300,24 +298,9 @@ def index():
             error = f"No data found for ticker '{ticker}'. Please check the symbol and try again."
             return render_template('index.html', error=error)
         
-        # Calculate technical indicators
-        technical_data = calculate_technical_indicators(data)
-        
-        # Create interactive chart
-        fig = create_stock_chart(data, technical_data, ticker)
-        chart_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-        
-        # Store data in session for download
-        session['analysis_data'] = {
-            'ticker': ticker,
-            'start_date': start_date,
-            'end_date': end_date,
-            'interval': interval,
-            'required_return': required_return,
-            'growth_rate': growth_rate
-        }
-        
-        return render_template('index.html', chart_json=chart_json)
+        # Show price data table only
+        price_table = data.reset_index().to_html(classes='table table-striped', index=False)
+        return render_template('index.html', price_table=price_table, ticker=ticker)
 
     return render_template('index.html')
 
