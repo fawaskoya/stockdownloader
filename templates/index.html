@@ -1,27 +1,348 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Stock Data Downloader</title>
+    <title>StockAnalyzer Pro | Financial Analysis Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        body { max-width: 600px; margin: 2rem auto; padding: 0 1rem; font-family: sans-serif; }
-        form { display: flex; flex-direction: column; gap: 1rem; }
-        input, select { padding: 0.5rem; }
-        button { padding: 0.5rem; background: #0097fb; color: white; border: none; cursor: pointer; }
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --success-color: #27ae60;
+            --background-color: #f8f9fa;
+        }
+
+        body { 
+            background-color: var(--background-color);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--primary-color);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--background-color);
+        }
+
+        .app-title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .app-subtitle {
+            color: var(--secondary-color);
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .suggestions { 
+            position: absolute;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .suggestion-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .suggestion-item:hover {
+            background-color: var(--background-color);
+        }
+
+        .ticker-input-container {
+            position: relative;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        .form-text {
+            color: var(--secondary-color);
+            opacity: 0.8;
+            font-size: 0.85rem;
+        }
+
+        .input-group-text {
+            background-color: var(--background-color);
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            background-color: var(--background-color);
+            border-bottom: none;
+            padding: 1rem 1.5rem;
+            font-weight: 500;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 2px solid var(--background-color);
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            margin-right: 0.5rem;
+        }
+
+        .chart-container {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .download-section {
+            margin-top: 1rem;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <h1>Stock Data Downloader</h1>
-    <form method="POST">
-        <input type="text" name="ticker" placeholder="Stock Ticker (e.g., AAPL)" required>
-        <input type="date" name="start" required>
-        <input type="date" name="end" required>
-        <select name="interval" required>
-            <option value="1d">Daily</option>
-            <option value="1wk">Weekly</option>
-            <option value="1mo">Monthly</option>
-        </select>
-        <button type="submit">Download Data</button>
-    </form>
+    <div class="container">
+        <div class="app-header">
+            <h1 class="app-title">StockAnalyzer Pro</h1>
+            <p class="app-subtitle">Professional Financial Analysis Tool for MSc Finance Students</p>
+        </div>
+
+        <form method="POST" class="needs-validation" novalidate>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-search feature-icon"></i>
+                    Stock Selection
+                </div>
+                <div class="card-body">
+                    <div class="ticker-input-container">
+                        <label for="ticker" class="form-label">Stock Ticker</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-currency-dollar"></i></span>
+                            <input type="text" class="form-control" id="ticker" name="ticker" 
+                                   placeholder="Enter ticker symbol (e.g., AAPL)" required>
+                        </div>
+                        <div id="suggestions" class="suggestions" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-calendar3 feature-icon"></i>
+                    Date Range
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <label for="start" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="start" name="start" required>
+                        </div>
+                        <div class="col">
+                            <label for="end" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="end" name="end" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-graph-up feature-icon"></i>
+                    Analysis Parameters
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="interval" class="form-label">Data Interval</label>
+                        <select class="form-select" id="interval" name="interval" required>
+                            <option value="1d">Daily</option>
+                            <option value="1wk">Weekly</option>
+                            <option value="1mo">Monthly</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col">
+                            <label for="required_return" class="form-label">Required Return (r)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="required_return" name="required_return" 
+                                       value="0.1" step="0.01" min="0" max="1" required>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Expected rate of return (e.g., 10%)</div>
+                        </div>
+                        <div class="col">
+                            <label for="growth_rate" class="form-label">Growth Rate (g)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="growth_rate" name="growth_rate" 
+                                       value="0.05" step="0.01" min="0" max="1" required>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Expected growth rate (e.g., 5%)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-graph-up me-2"></i>
+                Generate Analysis
+            </button>
+        </form>
+
+        {% if chart_json %}
+        <div class="chart-container">
+            <div id="stockChart"></div>
+            <div class="download-section">
+                <a href="{{ url_for('download_report') }}" class="btn btn-primary">
+                    <i class="bi bi-download me-2"></i>
+                    Download Full Analysis Report
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            <p>© 2024 StockAnalyzer Pro | For Educational Use Only</p>
+        </div>
+    </div>
+
+    <script>
+        const tickerInput = document.getElementById('ticker');
+        const suggestionsDiv = document.getElementById('suggestions');
+        let debounceTimer;
+
+        tickerInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                suggestionsDiv.style.display = 'none';
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetch(`/search_ticker?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        suggestionsDiv.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(item => {
+                                const div = document.createElement('div');
+                                div.className = 'suggestion-item';
+                                div.innerHTML = `
+                                    <strong>${item.symbol}</strong>
+                                    <span class="text-muted ms-2">${item.name}</span>
+                                `;
+                                div.addEventListener('click', () => {
+                                    tickerInput.value = item.symbol;
+                                    suggestionsDiv.style.display = 'none';
+                                });
+                                suggestionsDiv.appendChild(div);
+                            });
+                            suggestionsDiv.style.display = 'block';
+                        } else {
+                            suggestionsDiv.style.display = 'none';
+                        }
+                    });
+            }, 300);
+        });
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!tickerInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+                suggestionsDiv.style.display = 'none';
+            }
+        });
+
+        // Set default dates
+        const today = new Date();
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(today.getFullYear() - 1);
+        
+        document.getElementById('end').value = today.toISOString().split('T')[0];
+        document.getElementById('start').value = oneYearAgo.toISOString().split('T')[0];
+
+        // Add form validation
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+            Array.prototype.slice.call(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+        })()
+
+        {% if chart_json %}
+        // Initialize the chart
+        const chartData = JSON.parse('{{ chart_json | safe }}');
+        Plotly.newPlot('stockChart', chartData.data, chartData.layout);
+        {% endif %}
+    </script>
 </body>
 </html>

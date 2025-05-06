@@ -2,3 +2,8 @@ flask
 yfinance
 pandas
 openpyxl
+requests
+numpy
+TA-Lib
+plotly
+gunicorn
