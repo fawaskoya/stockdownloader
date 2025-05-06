@@ -294,6 +294,11 @@ def index():
         # Download data
         data = yf.download(ticker, start=start_date, end=end_date, interval=interval)
         
+        # Validate data
+        if data is None or data.empty:
+            error = f"No data found for ticker '{ticker}'. Please check the symbol and try again."
+            return render_template('index.html', error=error)
+        
         # Calculate technical indicators
         technical_data = calculate_technical_indicators(data)
         
