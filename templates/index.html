@@ -1,0 +1,22 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Data Downloader</title>
+    <style>
+        body { max-width: 600px; margin: 2rem auto; padding: 0 1rem; font-family: sans-serif; }
+        form { display: flex; flex-direction: column; gap: 1rem; }
+        input { padding: 0.5rem; }
+        button { padding: 0.5rem; background: #0097fb; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Stock Data Downloader</h1>
+    <form method="POST">
+        <input type="text" name="ticker" placeholder="Stock Ticker (e.g., AAPL)" required>
+        <input type="date" name="start" required>
+        <input type="date" name="end" required>
+        <button type="submit">Download Data</button>
+    </form>
+</body>
+</html>
