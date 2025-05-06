@@ -13,12 +13,13 @@ def index():
         ticker = request.form['ticker'].upper()
         start_date = request.form['start']
         end_date = request.form['end']
+        interval = request.form['interval']
         
         # Download data
-        data = yf.download(ticker, start=start_date, end=end_date)
+        data = yf.download(ticker, start=start_date, end=end_date, interval=interval)
         
         # Save to Excel
-        filename = f"{ticker}_{start_date}_to_{end_date}.xlsx"
+        filename = f"{ticker}_{interval}_{start_date}_to_{end_date}.xlsx"
         data.to_excel(filename)
         
         return send_file(filename, as_attachment=True)
