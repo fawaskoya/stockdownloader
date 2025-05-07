@@ -130,18 +130,60 @@ def format_growth_metrics(info):
 
 def format_dividend_info(info):
     """Format dividend information"""
-    dividend_yield = info.get('dividendYield', 'N/A')
+    # Handle dividend yield correctly
+    dividend_yield = info.get('dividendYield', None)
     if isinstance(dividend_yield, (int, float)):
-        dividend_yield_formatted = f"{dividend_yield*100:.2f}%" if dividend_yield < 1 else f"{dividend_yield:.2f}%"
+        # Always format as percentage with proper decimal places
+        dividend_yield_formatted = f"{dividend_yield * 100:.2f}%"
     else:
         dividend_yield_formatted = 'N/A'
-        
+    
+    # Format dates correctly
+    ex_dividend_date = info.get('exDividendDate', None)
+    dividend_date = info.get('dividendDate', None)
+    
+    # Convert timestamps to readable dates
+    def format_date(timestamp):
+        if not timestamp:
+            return 'N/A'
+        try:
+            # Unix timestamp (seconds since epoch)
+            if isinstance(timestamp, (int, float)):
+                date_obj = datetime.fromtimestamp(timestamp)
+                return date_obj.strftime('%Y-%m-%d')
+            
+            # String date - try different formats
+            if isinstance(timestamp, str):
+                # Try to parse ISO format
+                try:
+                    date_obj = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    return date_obj.strftime('%Y-%m-%d')
+                except:
+                    pass
+                
+                # Try to parse other common formats
+                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d-%m-%Y', '%Y/%m/%d']:
+                    try:
+                        date_obj = datetime.strptime(timestamp, fmt)
+                        return date_obj.strftime('%Y-%m-%d')
+                    except:
+                        pass
+                
+                # If we get here, just return the string as is
+                return timestamp
+            
+            # For other types, convert to string
+            return str(timestamp)
+        except:
+            # If all parsing fails, return as is or N/A
+            return 'N/A'
+    
     return {
         'Dividend Yield': dividend_yield_formatted,
         'Dividend Rate': format_currency(info.get('dividendRate')),
         'Payout Ratio': format_percent(info.get('payoutRatio')),
-        'Ex-Dividend Date': info.get('exDividendDate', 'N/A'),
-        'Dividend Date': info.get('dividendDate', 'N/A')
+        'Ex-Dividend Date': format_date(ex_dividend_date),
+        'Dividend Date': format_date(dividend_date)
     }
 
 def format_trading_info(info):
@@ -209,6 +251,18 @@ def index():
         # Get financial ratios
         financial_ratios = get_financial_ratios(ticker)
         
+        # Debug: Store raw dividend info if needed
+        debug_info = {}
+        try:
+            stock = yf.Ticker(ticker)
+            # Extract just the dividend-related fields for debugging
+            raw_info = stock.info
+            dividend_fields = {k: raw_info.get(k) for k in raw_info if 'dividend' in k.lower() or k in ['exDividendDate', 'payoutRatio']}
+            debug_info['dividend_fields'] = dividend_fields
+            debug_info['dividend_types'] = {k: type(v).__name__ for k, v in dividend_fields.items()}
+        except Exception as e:
+            debug_info['error'] = str(e)
+        
         # Store only query parameters in session for download
         session['last_query'] = {
             'ticker': ticker,
@@ -226,7 +280,8 @@ def index():
             justify='left'
         )
         
-        return render_template('index.html', price_table=price_table, ticker=ticker, financial_ratios=financial_ratios)
+        # Include debug info for admin view (hidden in production)
+        return render_template('index.html', price_table=price_table, ticker=ticker, financial_ratios=financial_ratios, debug_info=debug_info)
 
     return render_template('index.html')
 
@@ -276,6 +331,33 @@ def download_excel():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         max_age=300  # Cache for 5 minutes
     )
+
+@app.route('/debug-dividend/<ticker>')
+def debug_dividend(ticker):
+    """Debug endpoint to check raw dividend data"""
+    try:
+        # Clear the cache for this ticker
+        get_financial_ratios.cache_clear()
+        
+        stock = yf.Ticker(ticker.upper())
+        info = stock.info
+        
+        # Raw data
+        dividend_fields = {k: info.get(k) for k in info if 'dividend' in k.lower() or k in ['exDividendDate', 'dividendDate', 'payoutRatio']}
+        typed_fields = {k: f"{v} ({type(v).__name__})" for k, v in dividend_fields.items()}
+        
+        # Formatted data
+        formatted = format_dividend_info(info)
+        
+        result = {
+            'raw': dividend_fields,
+            'typed': typed_fields,
+            'formatted': formatted
+        }
+        
+        return result
+    except Exception as e:
+        return {'error': str(e)}
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

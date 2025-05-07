@@ -396,6 +396,19 @@
 
         <div class="footer text-center mt-4 pt-3 border-top">
             <p class="small">© 2024 StockAnalyzer Pro | For Educational Use Only</p>
+            
+            {% if debug_info %}
+            <!-- Debug Information (hidden by default) -->
+            <div class="debug-info mt-3" style="display: none;">
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="document.getElementById('debugData').style.display = 'block';">
+                    Show Debug Info
+                </button>
+                <div id="debugData" style="display: none; text-align: left; font-size: 0.8rem; margin-top: 1rem; white-space: pre-wrap; overflow-x: auto;">
+                    <h5>Raw Dividend Data:</h5>
+                    <code>{{ debug_info | tojson(indent=2) }}</code>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
