@@ -39,7 +39,7 @@ def get_financial_ratios(ticker, max_age=3600):  # Cache for 1 hour
     """Get key financial ratios from Yahoo Finance with caching"""
     try:
         # Set a timeout to prevent hanging on API calls
-        stock = yf.Ticker(ticker, timeout=15)
+        stock = yf.Ticker(ticker)
         info = stock.info
         
         if not info:
@@ -533,7 +533,7 @@ def debug_dividend(ticker):
         # Clear the cache for this ticker
         get_financial_ratios.cache_clear()
         
-        stock = yf.Ticker(ticker.upper(), timeout=15)
+        stock = yf.Ticker(ticker.upper())
         info = stock.info
         
         # Raw data
