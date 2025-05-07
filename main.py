@@ -90,9 +90,20 @@ def get_financial_ratios(ticker):
         }
         
         # Dividend Information
+        dividend_yield = info.get('dividendYield', 'N/A')
+        # Special handling for dividend yield formatting
+        if isinstance(dividend_yield, (int, float)):
+            # If value is greater than 1, it's likely already in percentage format (e.g. 52 instead of 0.52)
+            if dividend_yield > 1:
+                dividend_yield_formatted = f"{dividend_yield:.2f}%"
+            else:
+                dividend_yield_formatted = f"{dividend_yield*100:.2f}%"
+        else:
+            dividend_yield_formatted = 'N/A'
+            
         dividend = {
             'Dividend Information': {
-                'Dividend Yield': f"{info.get('dividendYield', 'N/A'):.2%}" if isinstance(info.get('dividendYield'), (int, float)) else 'N/A',
+                'Dividend Yield': dividend_yield_formatted,
                 'Dividend Rate': f"${info.get('dividendRate', 'N/A'):.2f}" if isinstance(info.get('dividendRate'), (int, float)) else 'N/A',
                 'Payout Ratio': f"{info.get('payoutRatio', 'N/A'):.2%}" if isinstance(info.get('payoutRatio'), (int, float)) else 'N/A',
                 'Ex-Dividend Date': info.get('exDividendDate', 'N/A'),
