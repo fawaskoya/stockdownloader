@@ -3,19 +3,43 @@ import yfinance as yf
 import pandas as pd
 import io
 import os
-from datetime import datetime
+import logging
+from datetime import datetime, timedelta
 from functools import lru_cache
+from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 300  # Cache static files for 5 minutes
+
+# Configure rate limiting
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 # Cache financial ratios data to reduce API calls
 @lru_cache(maxsize=32)
 def get_financial_ratios(ticker, max_age=3600):  # Cache for 1 hour
     """Get key financial ratios from Yahoo Finance with caching"""
     try:
-        stock = yf.Ticker(ticker)
+        # Set a timeout to prevent hanging on API calls
+        stock = yf.Ticker(ticker, timeout=15)
         info = stock.info
         
         if not info:
@@ -31,7 +55,8 @@ def get_financial_ratios(ticker, max_age=3600):  # Cache for 1 hour
             income_stmt_quarterly = stock.quarterly_income_stmt
             balance_sheet_quarterly = stock.quarterly_balance_sheet
             cash_flow_quarterly = stock.quarterly_cashflow
-        except:
+        except Exception as e:
+            logger.warning(f"Could not fetch financial statements for {ticker}: {e}")
             income_stmt = balance_sheet = cash_flow = None
             income_stmt_quarterly = balance_sheet_quarterly = cash_flow_quarterly = None
             
@@ -77,7 +102,7 @@ def get_financial_ratios(ticker, max_age=3600):  # Cache for 1 hour
         
         return categories
     except Exception as e:
-        print(f"Error fetching financial ratios: {e}")
+        logger.error(f"Error fetching financial ratios: {e}")
         return None
 
 def format_currency(value, symbol='$'):
@@ -325,18 +350,26 @@ def format_financial_highlights(info, income_stmt=None, balance_sheet=None, cash
     return highlights
 
 # Optimize downloading data to avoid redundant calls
-def download_stock_data(ticker, start_date, end_date, interval):
+def download_stock_data(ticker, start_date, end_date, interval, timeout=15):
     """Download stock data with error handling"""
     try:
-        # Set a reasonable timeout to avoid hanging requests
-        timeout = 15  # seconds
+        # For very long date ranges, use a sample to reduce memory usage
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+        date_range = (end - start).days
+        
+        # For extreme ranges with daily data, automatically switch to weekly
+        adjusted_interval = interval
+        if interval == '1d' and date_range > 1825:  # > 5 years
+            logger.info(f"Automatically switching to weekly data for {date_range} day range")
+            adjusted_interval = '1wk'
         
         # Download only required columns to save memory
         data = yf.download(
             ticker, 
             start=start_date, 
             end=end_date, 
-            interval=interval,
+            interval=adjusted_interval,
             progress=False,  # Disable progress bar to reduce console output
             threads=True,    # Enable multi-threading for faster downloads
             timeout=timeout  # Add timeout to prevent hanging on slow connections
@@ -350,122 +383,157 @@ def download_stock_data(ticker, start_date, end_date, interval):
                 
         return data
     except Exception as e:
-        print(f"Error downloading data: {str(e)}")
+        logger.error(f"Error downloading data: {str(e)}")
         return None
 
 @app.route('/', methods=['GET', 'POST'])
+@limiter.limit("30 per minute")
 def index():
     if request.method == 'POST':
-        ticker = request.form['ticker'].upper().strip()
-        start_date = request.form['start']
-        end_date = request.form['end']
-        interval = request.form['interval']
-        
-        # Download data
-        data = download_stock_data(ticker, start_date, end_date, interval)
-        
-        # Validate data
-        if data is None or data.empty:
-            error = f"No data found for ticker '{ticker}'. Please check the symbol and try again."
-            return render_template('index.html', error=error)
-        
-        # Get financial ratios
-        financial_ratios = get_financial_ratios(ticker)
-        
-        # Verify financial data was retrieved - ensure no NoneType error if Yahoo Finance API fails
-        if financial_ratios is None:
-            financial_ratios = {}
-            print(f"Warning: No financial ratios available for {ticker}")
-        
-        # Debug: Store raw dividend info if needed
-        debug_info = {}
         try:
-            stock = yf.Ticker(ticker)
-            # Extract just the dividend-related fields for debugging
-            raw_info = stock.info
-            dividend_fields = {k: raw_info.get(k) for k in raw_info if 'dividend' in k.lower() or k in ['exDividendDate', 'payoutRatio']}
-            debug_info['dividend_fields'] = dividend_fields
-            debug_info['dividend_types'] = {k: type(v).__name__ for k, v in dividend_fields.items()}
+            ticker = request.form['ticker'].upper().strip()
+            start_date = request.form['start']
+            end_date = request.form['end']
+            interval = request.form['interval']
+            
+            # Validate dates
+            try:
+                start = datetime.strptime(start_date, '%Y-%m-%d')
+                end = datetime.strptime(end_date, '%Y-%m-%d')
+                if end <= start:
+                    error = "End date must be after start date."
+                    return render_template('index.html', error=error)
+            except ValueError:
+                error = "Invalid date format. Please use YYYY-MM-DD format."
+                return render_template('index.html', error=error)
+            
+            # Download data
+            data = download_stock_data(ticker, start_date, end_date, interval)
+            
+            # Validate data
+            if data is None or data.empty:
+                # Try one more time with a longer timeout as a fallback
+                logger.warning(f"Retrying data download for {ticker} with longer timeout")
+                data = download_stock_data(ticker, start_date, end_date, interval, timeout=30)
+                
+                # If still no data, return error
+                if data is None or data.empty:
+                    error = f"No data found for ticker '{ticker}'. Please check the symbol and try again."
+                    return render_template('index.html', error=error)
+            
+            # Get financial ratios
+            financial_ratios = get_financial_ratios(ticker)
+            
+            # Verify financial data was retrieved - ensure no NoneType error if Yahoo Finance API fails
+            if financial_ratios is None:
+                financial_ratios = {}
+                logger.warning(f"No financial ratios available for {ticker}")
+            
+            # Debug: Store raw dividend info if needed
+            debug_info = {}
+            try:
+                stock = yf.Ticker(ticker)
+                # Extract just the dividend-related fields for debugging
+                raw_info = stock.info
+                dividend_fields = {k: raw_info.get(k) for k in raw_info if 'dividend' in k.lower() or k in ['exDividendDate', 'payoutRatio']}
+                debug_info['dividend_fields'] = dividend_fields
+                debug_info['dividend_types'] = {k: type(v).__name__ for k, v in dividend_fields.items()}
+            except Exception as e:
+                debug_info['error'] = str(e)
+            
+            # Store only query parameters in session for download
+            session['last_query'] = {
+                'ticker': ticker,
+                'start_date': start_date,
+                'end_date': end_date,
+                'interval': interval
+            }
+            
+            # Generate HTML table with optimized settings
+            price_table = data.reset_index().to_html(
+                classes='table table-striped table-sm', 
+                index=False,
+                float_format='%.2f',  # Limit decimal places
+                border=0,
+                justify='left'
+            )
+            
+            # Include debug info for admin view (hidden in production)
+            return render_template('index.html', price_table=price_table, ticker=ticker, financial_ratios=financial_ratios, debug_info=debug_info)
         except Exception as e:
-            debug_info['error'] = str(e)
-        
-        # Store only query parameters in session for download
-        session['last_query'] = {
-            'ticker': ticker,
-            'start_date': start_date,
-            'end_date': end_date,
-            'interval': interval
-        }
-        
-        # Generate HTML table with optimized settings
-        price_table = data.reset_index().to_html(
-            classes='table table-striped table-sm', 
-            index=False,
-            float_format='%.2f',  # Limit decimal places
-            border=0,
-            justify='left'
-        )
-        
-        # Include debug info for admin view (hidden in production)
-        return render_template('index.html', price_table=price_table, ticker=ticker, financial_ratios=financial_ratios, debug_info=debug_info)
+            error_message = f"An error occurred: {str(e)}"
+            logger.error(error_message)  # Log error for debugging
+            return render_template('index.html', error=error_message)
 
     return render_template('index.html')
 
 @app.route('/download_excel')
+@limiter.limit("10 per minute")
 def download_excel():
-    if 'last_query' not in session:
-        return "No price data available to download.", 400
-    
-    q = session['last_query']
-    data = download_stock_data(q['ticker'], q['start_date'], q['end_date'], q['interval'])
-    
-    if data is None or data.empty:
-        return "No price data available to download.", 400
-    
-    # Create Excel file in memory
-    output = io.BytesIO()
-    
     try:
-        # Flatten MultiIndex columns if present
-        if isinstance(data.columns, pd.MultiIndex):
-            data.columns = ['_'.join([str(i) for i in col if i]) for col in data.columns.values]
+        if 'last_query' not in session:
+            return "No price data available to download.", 400
         
-        # Optimize Excel export
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            data.reset_index().to_excel(
-                writer, 
-                sheet_name='Price Data',
-                index=False,
-                float_format="%.2f"  # Limit decimal places
-            )
+        q = session['last_query']
+        data = download_stock_data(q['ticker'], q['start_date'], q['end_date'], q['interval'])
+        
+        if data is None or data.empty:
+            return "No price data available to download.", 400
+        
+        # Create Excel file in memory
+        output = io.BytesIO()
+        
+        try:
+            # Flatten MultiIndex columns if present
+            if isinstance(data.columns, pd.MultiIndex):
+                data.columns = ['_'.join([str(i) for i in col if i]) for col in data.columns.values]
             
-            # Set column widths for better readability
-            worksheet = writer.sheets['Price Data']
-            for i, col in enumerate(data.reset_index().columns):
-                max_length = max(data.reset_index()[col].astype(str).map(len).max(), len(str(col)))
-                worksheet.column_dimensions[chr(65 + i)].width = max_length + 2
-    
+            # Optimize Excel export
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                data.reset_index().to_excel(
+                    writer, 
+                    sheet_name='Price Data',
+                    index=False,
+                    float_format="%.2f"  # Limit decimal places
+                )
+                
+                # Set column widths for better readability
+                worksheet = writer.sheets['Price Data']
+                for i, col in enumerate(data.reset_index().columns):
+                    max_length = max(data.reset_index()[col].astype(str).map(len).max(), len(str(col)))
+                    worksheet.column_dimensions[chr(65 + i)].width = max_length + 2
+        
+        except Exception as e:
+            error_message = f"Error writing Excel file: {str(e)}"
+            logger.error(error_message)  # Log error for debugging
+            return error_message, 500
+        
+        output.seek(0)
+        filename = f"{q['ticker']}_price_data.xlsx"
+        return send_file(
+            output, 
+            as_attachment=True, 
+            download_name=filename, 
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            max_age=300  # Cache for 5 minutes
+        )
     except Exception as e:
-        return f"Error writing Excel file: {str(e)}", 500
-    
-    output.seek(0)
-    filename = f"{q['ticker']}_price_data.xlsx"
-    return send_file(
-        output, 
-        as_attachment=True, 
-        download_name=filename, 
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        max_age=300  # Cache for 5 minutes
-    )
+        error_message = f"An error occurred while generating Excel file: {str(e)}"
+        logger.error(error_message)  # Log error for debugging
+        return error_message, 500
 
 @app.route('/debug-dividend/<ticker>')
 def debug_dividend(ticker):
     """Debug endpoint to check raw dividend data"""
     try:
+        # Only allow this endpoint in development mode
+        if os.environ.get('FLASK_ENV') != 'development':
+            return {"error": "This endpoint is only available in development mode"}, 403
+            
         # Clear the cache for this ticker
         get_financial_ratios.cache_clear()
         
-        stock = yf.Ticker(ticker.upper())
+        stock = yf.Ticker(ticker.upper(), timeout=15)
         info = stock.info
         
         # Raw data
@@ -498,6 +566,10 @@ def debug_dividend(ticker):
         return result
     except Exception as e:
         return {'error': str(e)}
+
+@app.route('/robots.txt')
+def static_from_root():
+    return send_file('static/robots.txt')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
