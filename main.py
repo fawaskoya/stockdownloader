@@ -63,7 +63,12 @@ def format_currency(value, symbol='$'):
 
 def format_percent(value):
     """Format a value as percentage"""
-    return f"{value*100:.2f}%" if isinstance(value, (int, float)) else 'N/A'
+    if not isinstance(value, (int, float)):
+        return 'N/A'
+    
+    # Format directly as percentage without multiplying by 100
+    # This uses Python's built-in percentage formatting which handles the multiplication
+    return f"{value:.2%}"
 
 def format_number(value):
     """Format a number with commas"""
@@ -133,8 +138,8 @@ def format_dividend_info(info):
     # Handle dividend yield correctly
     dividend_yield = info.get('dividendYield', None)
     if isinstance(dividend_yield, (int, float)):
-        # Always format as percentage with proper decimal places
-        dividend_yield_formatted = f"{dividend_yield * 100:.2f}%"
+        # Format as percentage exactly as Yahoo Finance shows it (no multiplication)
+        dividend_yield_formatted = f"{dividend_yield:.2%}"
     else:
         dividend_yield_formatted = 'N/A'
     
@@ -346,12 +351,26 @@ def debug_dividend(ticker):
         dividend_fields = {k: info.get(k) for k in info if 'dividend' in k.lower() or k in ['exDividendDate', 'dividendDate', 'payoutRatio']}
         typed_fields = {k: f"{v} ({type(v).__name__})" for k, v in dividend_fields.items()}
         
+        # Special focus on dividend yield
+        dividend_yield = info.get('dividendYield')
+        if dividend_yield is not None:
+            yield_formats = {
+                'Raw Value': dividend_yield,
+                'Python Type': type(dividend_yield).__name__,
+                'Standard Format': f"{dividend_yield:.2f}",
+                'As Percentage (no *100)': f"{dividend_yield:.2%}",
+                'As Percentage (*100)': f"{dividend_yield * 100:.2f}%"
+            }
+        else:
+            yield_formats = {'Error': 'No dividend yield found'}
+        
         # Formatted data
         formatted = format_dividend_info(info)
         
         result = {
             'raw': dividend_fields,
             'typed': typed_fields,
+            'yield_formats': yield_formats,
             'formatted': formatted
         }
         
