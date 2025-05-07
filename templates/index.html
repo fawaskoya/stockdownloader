@@ -336,12 +336,15 @@
             <div class="card-body">
                 <div class="row">
                     {% for category, metrics in financial_ratios.items() %}
+                    {% if category not in ['Abbreviation Guide', 'Footnotes'] %}
                     <div class="col-md-6 mb-4">
                         <div class="card h-100">
                             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                 <div>
                                     {% if category == 'Company Information' %}
                                     <i class="bi bi-building"></i>
+                                    {% elif category == 'Financial Highlights' %}
+                                    <i class="bi bi-file-earmark-bar-graph"></i>
                                     {% elif category == 'Price & Performance' %}
                                     <i class="bi bi-graph-up-arrow"></i>
                                     {% elif category == 'Valuation Ratios' %}
@@ -387,11 +390,57 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
+                
+                <!-- Abbreviation Guide and Footnotes -->
+                {% if financial_ratios.get('Abbreviation Guide') or financial_ratios.get('Footnotes') %}
+                <div class="row mt-4">
+                    {% if financial_ratios.get('Abbreviation Guide') %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-light">
+                                <i class="bi bi-book"></i>
+                                <strong>Abbreviation Guide</strong>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        {% for abbr, meaning in financial_ratios['Abbreviation Guide'].items() %}
+                                        <tr>
+                                            <td style="width: 30%"><strong>{{ abbr }}</strong></td>
+                                            <td>= {{ meaning }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if financial_ratios.get('Footnotes') %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-light">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>Footnotes</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled small mb-0">
+                                    {% for key, note in financial_ratios['Footnotes'].items() %}
+                                    <li><sup>{{ key }}</sup> {{ note }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
-        {% endif %}
         {% endif %}
 
         <div class="footer text-center mt-4 pt-3 border-top">

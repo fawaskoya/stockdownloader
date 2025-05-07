@@ -20,6 +20,20 @@ def get_financial_ratios(ticker, max_age=3600):  # Cache for 1 hour
         
         if not info:
             return None
+        
+        # Get additional financial data
+        # Balance sheet, income statement, and cash flow data
+        try:
+            income_stmt = stock.income_stmt
+            balance_sheet = stock.balance_sheet
+            cash_flow = stock.cashflow
+            # Add quarterly data
+            income_stmt_quarterly = stock.quarterly_income_stmt
+            balance_sheet_quarterly = stock.quarterly_balance_sheet
+            cash_flow_quarterly = stock.quarterly_cashflow
+        except:
+            income_stmt = balance_sheet = cash_flow = None
+            income_stmt_quarterly = balance_sheet_quarterly = cash_flow_quarterly = None
             
         # Organize data into categories with formatting functions
         categories = {
@@ -32,6 +46,7 @@ def get_financial_ratios(ticker, max_age=3600):  # Cache for 1 hour
                 'Currency': info.get('currency', 'N/A'),
                 'Website': info.get('website', 'N/A')
             },
+            'Financial Highlights': format_financial_highlights(info, income_stmt, balance_sheet, cash_flow),
             'Price & Performance': format_price_metrics(info),
             'Valuation Ratios': format_valuation_metrics(info),
             'Financial Health': format_financial_health(info),
@@ -40,6 +55,24 @@ def get_financial_ratios(ticker, max_age=3600):  # Cache for 1 hour
             'Dividend Information': format_dividend_info(info),
             'Trading Information': format_trading_info(info),
             'Analyst Opinions': format_analyst_info(info)
+        }
+        
+        # Add abbreviation guide
+        categories['Abbreviation Guide'] = {
+            'mrq': 'Most Recent Quarter',
+            'ttm': 'Trailing Twelve Months',
+            'yoy': 'Year Over Year',
+            'lfy': 'Last Fiscal Year',
+            'fye': 'Fiscal Year Ending'
+        }
+        
+        # Add footnotes
+        categories['Footnotes'] = {
+            '1': 'Data provided by Refinitiv.',
+            '2': 'Data provided by EDGAR Online.',
+            '3': 'Data derived from multiple sources or calculated by Yahoo Finance.',
+            '4': 'Data provided by Morningstar, Inc.',
+            '5': 'Shares outstanding is taken from the most recently filed quarterly or annual report and Market Cap is calculated using shares outstanding.'
         }
         
         return categories
@@ -211,6 +244,71 @@ def format_analyst_info(info):
         'Recommendation': info.get('recommendationKey', 'N/A').capitalize() if info.get('recommendationKey') else 'N/A',
         'No. of Analysts': f"{info.get('numberOfAnalystOpinions')}" if info.get('numberOfAnalystOpinions') else 'N/A'
     }
+
+def format_financial_highlights(info, income_stmt=None, balance_sheet=None, cash_flow=None):
+    """Format financial highlights as shown in Yahoo Finance"""
+    highlights = {}
+    
+    # Fiscal Year information
+    fiscal_year_end = info.get('lastFiscalYearEnd')
+    most_recent_quarter = info.get('mostRecentQuarter')
+    
+    # Format dates to match Yahoo Finance
+    def format_fiscal_date(date_value):
+        if not date_value:
+            return 'N/A'
+        try:
+            if isinstance(date_value, str):
+                # Try to parse as date
+                for fmt in ['%Y-%m-%d', '%m/%d/%Y']:
+                    try:
+                        date_obj = datetime.strptime(date_value, fmt)
+                        return date_obj.strftime('%m/%d/%Y')
+                    except:
+                        pass
+                return date_value
+            # Unix timestamp
+            elif isinstance(date_value, (int, float)):
+                date_obj = datetime.fromtimestamp(date_value)
+                return date_obj.strftime('%m/%d/%Y')
+            return str(date_value)
+        except:
+            return 'N/A'
+    
+    highlights['Fiscal Year Ends'] = format_fiscal_date(fiscal_year_end)
+    highlights['Most Recent Quarter (mrq)'] = format_fiscal_date(most_recent_quarter)
+    
+    # Profitability metrics
+    highlights['Profit Margin'] = format_percent(info.get('profitMargins'))
+    highlights['Operating Margin (ttm)'] = format_percent(info.get('operatingMargins'))
+    
+    # Management Effectiveness
+    highlights['Return on Assets (ttm)'] = format_percent(info.get('returnOnAssets'))
+    highlights['Return on Equity (ttm)'] = format_percent(info.get('returnOnEquity'))
+    
+    # Income Statement metrics
+    highlights['Revenue (ttm)'] = format_currency(info.get('totalRevenue'))
+    highlights['Revenue Per Share (ttm)'] = format_decimal(info.get('revenuePerShare'))
+    highlights['Quarterly Revenue Growth (yoy)'] = format_percent(info.get('revenueGrowth'))
+    highlights['Gross Profit (ttm)'] = format_currency(info.get('grossProfits'))
+    highlights['EBITDA'] = format_currency(info.get('ebitda'))
+    highlights['Net Income Avi to Common (ttm)'] = format_currency(info.get('netIncomeToCommon'))
+    highlights['Diluted EPS (ttm)'] = format_decimal(info.get('trailingEps'))
+    highlights['Quarterly Earnings Growth (yoy)'] = format_percent(info.get('earningsQuarterlyGrowth'))
+    
+    # Balance Sheet metrics
+    highlights['Total Cash (mrq)'] = format_currency(info.get('totalCash'))
+    highlights['Total Cash Per Share (mrq)'] = format_decimal(info.get('totalCashPerShare'))
+    highlights['Total Debt (mrq)'] = format_currency(info.get('totalDebt'))
+    highlights['Total Debt/Equity (mrq)'] = format_percent(info.get('debtToEquity'))
+    highlights['Current Ratio (mrq)'] = format_decimal(info.get('currentRatio'))
+    highlights['Book Value Per Share (mrq)'] = format_decimal(info.get('bookValue'))
+    
+    # Cash Flow Statement
+    highlights['Operating Cash Flow (ttm)'] = format_currency(info.get('operatingCashflow'))
+    highlights['Levered Free Cash Flow (ttm)'] = format_currency(info.get('freeCashflow'))
+    
+    return highlights
 
 # Optimize downloading data to avoid redundant calls
 def download_stock_data(ticker, start_date, end_date, interval):
