@@ -8,7 +8,6 @@ import requests
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-import ta
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import json
