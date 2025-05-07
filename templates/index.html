@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" data-bs-theme="light">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StockAnalyzer Pro | Financial Analysis Tool</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         :root {
@@ -13,59 +15,90 @@
             --success-color: #27ae60;
             --background-color: #f8f9fa;
         }
-
+        
+        [data-bs-theme="dark"] {
+            --primary-color: #ecf0f1;
+            --secondary-color: #bdc3c7;
+            --background-color: #2c3e50;
+        }
+        
         body { 
             background-color: var(--background-color);
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
             color: var(--primary-color);
+            transition: background-color 0.3s ease;
         }
-
+        
         .container {
             max-width: 900px;
-            margin: 2rem auto;
-            padding: 2rem;
-            background: white;
+            margin: 1rem auto;
+            padding: 1.5rem;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+                margin: 0.5rem auto;
+            }
+            
+            .app-header {
+                margin-bottom: 1.5rem;
+                padding-bottom: 1rem;
+            }
+            
+            .btn {
+                padding: 0.5rem 1rem;
+            }
+            
+            .download-buttons {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .download-buttons button, .download-buttons a {
+                width: 100%;
+            }
+        }
+        
         .app-header {
             text-align: center;
-            margin-bottom: 2.5rem;
-            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
             border-bottom: 2px solid var(--background-color);
         }
-
+        
         .app-title {
             color: var(--primary-color);
             font-weight: 600;
             margin-bottom: 0.5rem;
         }
-
+        
         .app-subtitle {
             color: var(--secondary-color);
             font-size: 1.1rem;
             opacity: 0.8;
         }
-
+        
         .form-label {
             font-weight: 500;
             color: var(--primary-color);
             margin-bottom: 0.5rem;
         }
-
+        
         .form-control, .form-select {
             border: 1px solid #dee2e6;
             border-radius: 8px;
             padding: 0.75rem;
             transition: all 0.2s ease;
         }
-
+        
         .form-control:focus, .form-select:focus {
             border-color: var(--accent-color);
             box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
         }
-
+        
         .suggestions { 
             position: absolute;
             background: white;
@@ -77,21 +110,21 @@
             z-index: 1000;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-
+        
         .suggestion-item {
             padding: 0.75rem 1rem;
             cursor: pointer;
             transition: background-color 0.2s ease;
         }
-
+        
         .suggestion-item:hover {
             background-color: var(--background-color);
         }
-
+        
         .ticker-input-container {
             position: relative;
         }
-
+        
         .btn-primary {
             background-color: var(--accent-color);
             border: none;
@@ -100,38 +133,38 @@
             border-radius: 8px;
             transition: all 0.2s ease;
         }
-
+        
         .btn-primary:hover {
             background-color: #2980b9;
             transform: translateY(-1px);
         }
-
+        
         .form-text {
             color: var(--secondary-color);
             opacity: 0.8;
             font-size: 0.85rem;
         }
-
+        
         .input-group-text {
             background-color: var(--background-color);
             border: 1px solid #dee2e6;
             border-radius: 8px;
         }
-
+        
         .card {
             border: none;
             border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             margin-bottom: 1.5rem;
         }
-
+        
         .card-header {
             background-color: var(--background-color);
             border-bottom: none;
             padding: 1rem 1.5rem;
             font-weight: 500;
         }
-
+        
         .footer {
             text-align: center;
             margin-top: 2rem;
@@ -140,13 +173,13 @@
             color: var(--secondary-color);
             font-size: 0.9rem;
         }
-
+        
         .feature-icon {
             font-size: 1.5rem;
             color: var(--accent-color);
             margin-right: 0.5rem;
         }
-
+        
         .chart-container {
             margin-top: 2rem;
             padding: 1rem;
@@ -154,28 +187,59 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-
+        
         .download-section {
             margin-top: 1rem;
             text-align: center;
         }
+        
+        .date-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .date-preset-btn {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+        }
+        
+        .dark-mode-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1030;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
     </style>
 </head>
 <body>
+    <button class="dark-mode-toggle btn btn-outline-secondary" id="darkModeToggle" aria-label="Toggle dark mode">
+        <i class="bi bi-moon-fill"></i>
+    </button>
+
     <div class="container">
         <div class="app-header">
             <h1 class="app-title">StockAnalyzer Pro</h1>
-            <p class="app-subtitle">Professional Financial Analysis Tool for MSc Finance Students</p>
+            <p class="app-subtitle">Professional Financial Analysis Tool</p>
         </div>
 
         <form method="POST" class="needs-validation" novalidate>
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="bi bi-search feature-icon"></i>
+                    <i class="bi bi-search"></i>
                     Stock Selection
                 </div>
                 <div class="card-body">
-                    <div class="ticker-input-container">
+                    <div class="position-relative">
                         <label for="ticker" class="form-label">Stock Ticker</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-currency-dollar"></i></span>
@@ -188,22 +252,32 @@
 
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="bi bi-calendar3 feature-icon"></i>
+                    <i class="bi bi-calendar3"></i>
                     Date Range
                 </div>
                 <div class="card-body">
+                    <div class="date-presets mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary date-preset-btn" data-days="7">1W</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary date-preset-btn" data-days="30">1M</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary date-preset-btn" data-days="90">3M</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary date-preset-btn" data-days="180">6M</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary date-preset-btn" data-days="365">1Y</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary date-preset-btn" data-days="1095">3Y</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary date-preset-btn" data-days="1825">5Y</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary date-preset-btn" id="ytdBtn">YTD</button>
+                    </div>
                     <div class="row mb-3">
-                        <div class="col">
+                        <div class="col-md-6 mb-2 mb-md-0">
                             <label for="start" class="form-label">Start Date</label>
                             <input type="date" class="form-control" id="start" name="start" required>
                         </div>
-                        <div class="col">
+                        <div class="col-md-6">
                             <label for="end" class="form-label">End Date</label>
                             <input type="date" class="form-control" id="end" name="end" required>
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col">
+                        <div class="col-md-6">
                             <label for="interval" class="form-label">Data Interval</label>
                             <select class="form-select" id="interval" name="interval" required>
                                 <option value="1d">Daily</option>
@@ -218,7 +292,7 @@
             <div class="d-flex justify-content-between mb-4">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-table me-2"></i>
-                    Get Price Data
+                    Get Data
                 </button>
                 <button type="button" class="btn btn-secondary" disabled style="pointer-events: none; opacity: 0.7;">
                     <i class="bi bi-graph-up me-2"></i>
@@ -233,21 +307,22 @@
 
         {% if price_table %}
         <div class="card mt-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-table feature-icon"></i> Price Data{% if ticker %} for {{ ticker }}{% endif %}</span>
-                <div>
-                    <button class="btn btn-info" type="button" data-bs-toggle="collapse" data-bs-target="#priceTableCollapse" aria-expanded="false" aria-controls="priceTableCollapse">
-                        <i class="bi bi-eye me-2"></i>Show/Hide Data
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                <span><i class="bi bi-table"></i> Price Data{% if ticker %} for {{ ticker }}{% endif %}</span>
+                <div class="download-buttons d-flex gap-2 mt-2 mt-md-0">
+                    <button class="btn btn-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#priceTableCollapse" aria-expanded="false" aria-controls="priceTableCollapse">
+                        <i class="bi bi-eye me-md-2"></i><span class="d-none d-md-inline">Show/Hide</span>
                     </button>
-                    <a id="downloadExcelBtn" href="{{ url_for('download_excel') }}" class="btn btn-success">
-                        <i class="bi bi-download me-2"></i>
-                        Download Excel
+                    <a id="downloadExcelBtn" href="{{ url_for('download_excel') }}" class="btn btn-success btn-sm">
+                        <i class="bi bi-download me-md-2"></i><span class="d-none d-md-inline">Download Excel</span>
                     </a>
                 </div>
             </div>
             <div class="collapse" id="priceTableCollapse">
                 <div class="card-body">
-                    {{ price_table | safe }}
+                    <div class="table-responsive">
+                        {{ price_table | safe }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -255,7 +330,7 @@
         {% if financial_ratios %}
         <div class="card mt-4">
             <div class="card-header">
-                <i class="bi bi-graph-up feature-icon"></i>
+                <i class="bi bi-graph-up"></i>
                 Financial Analysis{% if ticker %} for {{ ticker }}{% endif %}
             </div>
             <div class="card-body">
@@ -266,25 +341,25 @@
                             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                 <div>
                                     {% if category == 'Company Information' %}
-                                    <i class="bi bi-building me-2"></i>
+                                    <i class="bi bi-building"></i>
                                     {% elif category == 'Price & Performance' %}
-                                    <i class="bi bi-graph-up-arrow me-2"></i>
+                                    <i class="bi bi-graph-up-arrow"></i>
                                     {% elif category == 'Valuation Ratios' %}
-                                    <i class="bi bi-cash-stack me-2"></i>
+                                    <i class="bi bi-cash-stack"></i>
                                     {% elif category == 'Profitability' %}
-                                    <i class="bi bi-piggy-bank me-2"></i>
+                                    <i class="bi bi-piggy-bank"></i>
                                     {% elif category == 'Growth Metrics' %}
-                                    <i class="bi bi-arrow-up-right me-2"></i>
+                                    <i class="bi bi-arrow-up-right"></i>
                                     {% elif category == 'Financial Health' %}
-                                    <i class="bi bi-shield-check me-2"></i>
+                                    <i class="bi bi-shield-check"></i>
                                     {% elif category == 'Dividend Information' %}
-                                    <i class="bi bi-currency-dollar me-2"></i>
+                                    <i class="bi bi-currency-dollar"></i>
                                     {% elif category == 'Trading Information' %}
-                                    <i class="bi bi-bar-chart me-2"></i>
+                                    <i class="bi bi-bar-chart"></i>
                                     {% elif category == 'Analyst Opinions' %}
-                                    <i class="bi bi-star me-2"></i>
+                                    <i class="bi bi-star"></i>
                                     {% else %}
-                                    <i class="bi bi-info-circle me-2"></i>
+                                    <i class="bi bi-info-circle"></i>
                                     {% endif %}
                                     <strong>{{ category }}</strong>
                                 </div>
@@ -296,16 +371,18 @@
                             </div>
                             <div class="collapse show" id="collapse-{{ category|replace(' ', '-')|lower }}">
                                 <div class="card-body p-0">
-                                    <table class="table table-striped table-sm mb-0">
-                                        <tbody>
-                                            {% for metric, value in metrics.items() %}
-                                            <tr>
-                                                <td>{{ metric }}</td>
-                                                <td class="text-end">{{ value }}</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-sm mb-0">
+                                            <tbody>
+                                                {% for metric, value in metrics.items() %}
+                                                <tr>
+                                                    <td>{{ metric }}</td>
+                                                    <td class="text-end">{{ value }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -317,35 +394,92 @@
         {% endif %}
         {% endif %}
 
-        <div class="footer">
-            <p>© 2024 StockAnalyzer Pro | For Educational Use Only</p>
+        <div class="footer text-center mt-4 pt-3 border-top">
+            <p class="small">© 2024 StockAnalyzer Pro | For Educational Use Only</p>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
     <script>
-        // Set default dates
-        const today = new Date();
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(today.getFullYear() - 1);
-        
-        document.getElementById('end').value = today.toISOString().split('T')[0];
-        document.getElementById('start').value = oneYearAgo.toISOString().split('T')[0];
-
-        // Add form validation
-        (function () {
-            'use strict'
-            var forms = document.querySelectorAll('.needs-validation')
-            Array.prototype.slice.call(forms).forEach(function (form) {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default dates
+            const today = new Date();
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(today.getFullYear() - 1);
+            
+            const endInput = document.getElementById('end');
+            const startInput = document.getElementById('start');
+            
+            endInput.value = today.toISOString().split('T')[0];
+            startInput.value = oneYearAgo.toISOString().split('T')[0];
+            
+            // Date preset functionality
+            document.querySelectorAll('.date-preset-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const end = new Date();
+                    const days = this.dataset.days;
+                    
+                    endInput.value = end.toISOString().split('T')[0];
+                    
+                    if (this.id === 'ytdBtn') {
+                        // Year to date
+                        const start = new Date(end.getFullYear(), 0, 1);
+                        startInput.value = start.toISOString().split('T')[0];
+                    } else {
+                        // Days ago
+                        const start = new Date();
+                        start.setDate(end.getDate() - parseInt(days));
+                        startInput.value = start.toISOString().split('T')[0];
+                    }
+                });
+            });
+            
+            // Dark mode toggle
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const htmlElement = document.documentElement;
+            
+            // Check for saved theme preference
+            if (localStorage.getItem('theme') === 'dark') {
+                htmlElement.setAttribute('data-bs-theme', 'dark');
+                darkModeToggle.innerHTML = '<i class="bi bi-sun-fill"></i>';
+            }
+            
+            darkModeToggle.addEventListener('click', function() {
+                if (htmlElement.getAttribute('data-bs-theme') === 'dark') {
+                    htmlElement.setAttribute('data-bs-theme', 'light');
+                    this.innerHTML = '<i class="bi bi-moon-fill"></i>';
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    htmlElement.setAttribute('data-bs-theme', 'dark');
+                    this.innerHTML = '<i class="bi bi-sun-fill"></i>';
+                    localStorage.setItem('theme', 'dark');
+                }
+            });
+            
+            // Add form validation
+            const forms = document.querySelectorAll('.needs-validation');
+            Array.from(forms).forEach(form => {
                 form.addEventListener('submit', function (event) {
                     if (!form.checkValidity()) {
-                        event.preventDefault()
-                        event.stopPropagation()
+                        event.preventDefault();
+                        event.stopPropagation();
                     }
-                    form.classList.add('was-validated')
-                }, false)
-            })
-        })()
+                    form.classList.add('was-validated');
+                }, false);
+            });
+            
+            // Lazy loading for Bootstrap components
+            const lazyLoadScript = () => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js';
+                document.body.appendChild(script);
+            };
+            
+            // Load Bootstrap JS only when needed
+            if (document.querySelector('[data-bs-toggle]')) {
+                lazyLoadScript();
+            }
+        });
     </script>
 </body>
 </html>
