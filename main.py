@@ -1,18 +1,11 @@
-from flask import Flask, render_template, request, send_file, jsonify, session
+from flask import Flask, render_template, request, send_file, session
 import yfinance as yf
 import pandas as pd
-import numpy as np
-from datetime import datetime
-import os
-import requests
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import json
-import plotly
+import openpyxl
 import io
+import os
+from datetime import datetime
+import json
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Required for session
