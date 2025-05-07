@@ -187,8 +187,15 @@ def format_dividend_info(info):
         try:
             # Unix timestamp (seconds since epoch)
             if isinstance(timestamp, (int, float)):
-                date_obj = datetime.fromtimestamp(timestamp)
-                return date_obj.strftime('%Y-%m-%d')
+                # Handle extreme values or future dates gracefully
+                if timestamp < 0 or timestamp > 10000000000:  # Extreme timestamp value check
+                    return 'N/A'
+                try:
+                    date_obj = datetime.fromtimestamp(timestamp)
+                    return date_obj.strftime('%Y-%m-%d')
+                except (ValueError, OverflowError, OSError):
+                    # Handle any timestamp conversion errors
+                    return 'N/A'
             
             # String date - try different formats
             if isinstance(timestamp, str):
@@ -269,8 +276,15 @@ def format_financial_highlights(info, income_stmt=None, balance_sheet=None, cash
                 return date_value
             # Unix timestamp
             elif isinstance(date_value, (int, float)):
-                date_obj = datetime.fromtimestamp(date_value)
-                return date_obj.strftime('%m/%d/%Y')
+                # Handle extreme values or future dates gracefully
+                if date_value < 0 or date_value > 10000000000:  # Extreme timestamp value check
+                    return 'N/A'
+                try:
+                    date_obj = datetime.fromtimestamp(date_value)
+                    return date_obj.strftime('%m/%d/%Y')
+                except (ValueError, OverflowError, OSError):
+                    # Handle any timestamp conversion errors
+                    return 'N/A'
             return str(date_value)
         except:
             return 'N/A'
@@ -314,6 +328,9 @@ def format_financial_highlights(info, income_stmt=None, balance_sheet=None, cash
 def download_stock_data(ticker, start_date, end_date, interval):
     """Download stock data with error handling"""
     try:
+        # Set a reasonable timeout to avoid hanging requests
+        timeout = 15  # seconds
+        
         # Download only required columns to save memory
         data = yf.download(
             ticker, 
@@ -321,7 +338,8 @@ def download_stock_data(ticker, start_date, end_date, interval):
             end=end_date, 
             interval=interval,
             progress=False,  # Disable progress bar to reduce console output
-            threads=True     # Enable multi-threading for faster downloads
+            threads=True,    # Enable multi-threading for faster downloads
+            timeout=timeout  # Add timeout to prevent hanging on slow connections
         )
         
         # Optimize memory usage by converting to appropriate dtypes
@@ -353,6 +371,11 @@ def index():
         
         # Get financial ratios
         financial_ratios = get_financial_ratios(ticker)
+        
+        # Verify financial data was retrieved - ensure no NoneType error if Yahoo Finance API fails
+        if financial_ratios is None:
+            financial_ratios = {}
+            print(f"Warning: No financial ratios available for {ticker}")
         
         # Debug: Store raw dividend info if needed
         debug_info = {}
