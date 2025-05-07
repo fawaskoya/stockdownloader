@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import json
 import plotly
+import io
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Required for session
@@ -298,11 +299,29 @@ def index():
             error = f"No data found for ticker '{ticker}'. Please check the symbol and try again."
             return render_template('index.html', error=error)
         
+        # Store price data in session for download
+        session['price_data'] = data.reset_index().to_json(orient='split')
+        session['ticker'] = ticker
+        
         # Show price data table only
         price_table = data.reset_index().to_html(classes='table table-striped', index=False)
         return render_template('index.html', price_table=price_table, ticker=ticker)
 
     return render_template('index.html')
+
+@app.route('/download_excel')
+def download_excel():
+    if 'price_data' not in session or 'ticker' not in session:
+        return "No price data available to download.", 400
+    import pandas as pd
+    data = pd.read_json(session['price_data'], orient='split')
+    ticker = session['ticker']
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        data.to_excel(writer, index=False, sheet_name='Price Data')
+    output.seek(0)
+    filename = f"{ticker}_price_data.xlsx"
+    return send_file(output, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @app.route('/download_report')
 def download_report():
