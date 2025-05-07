@@ -10,16 +10,6 @@ import json
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Required for session
 
-def get_ticker_suggestions(query):
-    url = f"https://query1.finance.yahoo.com/v1/finance/search?q={query}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        if 'quotes' in data:
-            return [{'symbol': quote['symbol'], 'name': quote['longname']} 
-                   for quote in data['quotes'] if 'symbol' in quote and 'longname' in quote]
-    return []
-
 def get_financial_ratios(ticker):
     stock = yf.Ticker(ticker)
     info = stock.info
@@ -268,12 +258,6 @@ def create_stock_chart(data, technical_data, ticker):
     )
 
     return fig
-
-@app.route('/search_ticker', methods=['GET'])
-def search_ticker():
-    query = request.args.get('q', '')
-    suggestions = get_ticker_suggestions(query)
-    return jsonify(suggestions)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():

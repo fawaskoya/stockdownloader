@@ -182,7 +182,6 @@
                             <input type="text" class="form-control" id="ticker" name="ticker" 
                                    placeholder="Enter ticker symbol (e.g., AAPL)" required>
                         </div>
-                        <div id="suggestions" class="suggestions" style="display: none;"></div>
                     </div>
                 </div>
             </div>
@@ -246,53 +245,6 @@
     </div>
 
     <script>
-        const tickerInput = document.getElementById('ticker');
-        const suggestionsDiv = document.getElementById('suggestions');
-        let debounceTimer;
-
-        tickerInput.addEventListener('input', function() {
-            clearTimeout(debounceTimer);
-            const query = this.value.trim();
-            
-            if (query.length < 2) {
-                suggestionsDiv.style.display = 'none';
-                return;
-            }
-
-            debounceTimer = setTimeout(() => {
-                fetch(`/search_ticker?q=${encodeURIComponent(query)}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        suggestionsDiv.innerHTML = '';
-                        if (data.length > 0) {
-                            data.forEach(item => {
-                                const div = document.createElement('div');
-                                div.className = 'suggestion-item';
-                                div.innerHTML = `
-                                    <strong>${item.symbol}</strong>
-                                    <span class="text-muted ms-2">${item.name}</span>
-                                `;
-                                div.addEventListener('click', () => {
-                                    tickerInput.value = item.symbol;
-                                    suggestionsDiv.style.display = 'none';
-                                });
-                                suggestionsDiv.appendChild(div);
-                            });
-                            suggestionsDiv.style.display = 'block';
-                        } else {
-                            suggestionsDiv.style.display = 'none';
-                        }
-                    });
-            }, 300);
-        });
-
-        // Close suggestions when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!tickerInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
-                suggestionsDiv.style.display = 'none';
-            }
-        });
-
         // Set default dates
         const today = new Date();
         const oneYearAgo = new Date();
