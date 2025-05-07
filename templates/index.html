@@ -192,7 +192,7 @@
                     Date Range
                 </div>
                 <div class="card-body">
-                    <div class="row">
+                    <div class="row mb-3">
                         <div class="col">
                             <label for="start" class="form-label">Start Date</label>
                             <input type="date" class="form-control" id="start" name="start" required>
@@ -200,6 +200,16 @@
                         <div class="col">
                             <label for="end" class="form-label">End Date</label>
                             <input type="date" class="form-control" id="end" name="end" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label for="interval" class="form-label">Data Interval</label>
+                            <select class="form-select" id="interval" name="interval" required>
+                                <option value="1d">Daily</option>
+                                <option value="1wk">Weekly</option>
+                                <option value="1mo">Monthly</option>
+                            </select>
                         </div>
                     </div>
                 </div>
