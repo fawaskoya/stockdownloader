@@ -233,20 +233,26 @@
 
         {% if price_table %}
         <div class="card mt-4">
-            <div class="card-header">
-                <i class="bi bi-table feature-icon"></i>
-                Price Data{% if ticker %} for {{ ticker }}{% endif %}
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-table feature-icon"></i> Price Data{% if ticker %} for {{ ticker }}{% endif %}</span>
+                <a id="downloadExcelBtn" href="{{ url_for('download_excel') }}" class="btn btn-success">
+                    <i class="bi bi-download me-2"></i>
+                    Download Excel
+                </a>
             </div>
             <div class="card-body">
                 {{ price_table | safe }}
-                <div class="mt-3 text-end">
-                    <a href="{{ url_for('download_excel') }}" class="btn btn-success">
-                        <i class="bi bi-download me-2"></i>
-                        Download Excel
-                    </a>
-                </div>
             </div>
         </div>
+        <script>
+            // Auto-trigger download when price_table is rendered
+            window.addEventListener('DOMContentLoaded', function() {
+                var btn = document.getElementById('downloadExcelBtn');
+                if (btn) {
+                    btn.click();
+                }
+            });
+        </script>
         {% endif %}
 
         <div class="footer">

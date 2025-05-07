@@ -275,9 +275,13 @@ def index():
             error = f"No data found for ticker '{ticker}'. Please check the symbol and try again."
             return render_template('index.html', error=error)
         
-        # Store price data in session for download
-        session['price_data'] = data.reset_index().to_json(orient='split')
-        session['ticker'] = ticker
+        # Store only query parameters in session for download
+        session['last_query'] = {
+            'ticker': ticker,
+            'start_date': start_date,
+            'end_date': end_date,
+            'interval': interval
+        }
         
         # Show price data table only
         price_table = data.reset_index().to_html(classes='table table-striped', index=False)
@@ -287,16 +291,17 @@ def index():
 
 @app.route('/download_excel')
 def download_excel():
-    if 'price_data' not in session or 'ticker' not in session:
+    if 'last_query' not in session:
         return "No price data available to download.", 400
     import pandas as pd
-    data = pd.read_json(session['price_data'], orient='split')
-    ticker = session['ticker']
+    q = session['last_query']
+    data = yf.download(q['ticker'], start=q['start_date'], end=q['end_date'], interval=q['interval'])
+    if data is None or data.empty:
+        return "No price data available to download.", 400
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        data.to_excel(writer, index=False, sheet_name='Price Data')
+    data.reset_index().to_excel(output, index=False, sheet_name='Price Data')
     output.seek(0)
-    filename = f"{ticker}_price_data.xlsx"
+    filename = f"{q['ticker']}_price_data.xlsx"
     return send_file(output, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @app.route('/download_report')
